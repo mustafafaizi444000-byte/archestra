@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { ChatListSkeleton } from "@/app/_parts/chat-list-skeleton";
 import { AgentIcon } from "@/components/agent-icon";
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog";
 import { TruncatedText } from "@/components/truncated-text";
@@ -23,7 +24,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
   SidebarMenuButton,
+  SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
@@ -109,10 +115,8 @@ export function ChatSidebarSection({
     ? (pathname.split("/").at(-1) ?? null)
     : null;
 
-  const pinnedChats = conversations.filter((c) => c.pinnedAt).slice(0, slots);
-  const recentUnpinnedChats = conversations
-    .filter((c) => !c.pinnedAt)
-    .slice(0, Math.max(0, slots - pinnedChats.length));
+  const pinnedChats = conversations.filter((c) => c.pinnedAt);
+  const recentUnpinnedChats = conversations.filter((c) => !c.pinnedAt);
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -198,10 +202,7 @@ export function ChatSidebarSection({
     );
   };
 
-  const renderConversationItem = (
-    conv: (typeof conversations)[number],
-    showPinIcon = false,
-  ) => {
+  const renderConversationItem = (conv: (typeof conversations)[number]) => {
     const isCurrentConversation = currentConversationId === conv.id;
     const displayTitle = getConversationDisplayTitle(conv.title, conv.messages);
     const hasRecentlyGeneratedTitle = animatingTitleIds.has(conv.id);
@@ -267,9 +268,6 @@ export function ChatSidebarSection({
               className="cursor-pointer flex-1 justify-between"
             >
               <span className="flex items-center gap-2 min-w-0 flex-1">
-                {showPinIcon && (
-                  <Pin className="h-3 w-3 shrink-0 text-muted-foreground" />
-                )}
                 {conv.share && (
                   <TooltipProvider>
                     <Tooltip>
@@ -404,39 +402,59 @@ export function ChatSidebarSection({
     return null;
   }
 
+  const subClass = flat ? "mx-0 border-l-0 px-0" : "mx-0 ml-3.5 px-0 pl-2.5";
+  const showMore = recentUnpinnedChats.length > slots;
+
   return (
     <>
-      <SidebarMenuSub
-        className={flat ? "mx-0 border-l-0 px-0" : "mx-0 ml-3.5 px-0 pl-2.5"}
-      >
-        {isLoading ? (
-          <SidebarMenuSubItem>
-            <div className="flex items-center gap-2 px-2 py-1.5">
-              <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
-              <span className="text-xs text-muted-foreground">
-                Loading chats...
-              </span>
-            </div>
-          </SidebarMenuSubItem>
-        ) : (
-          <>
-            {pinnedChats.map((conv) => renderConversationItem(conv, true))}
-            {recentUnpinnedChats.map((conv) => renderConversationItem(conv))}
-            {conversations.length >
-              pinnedChats.length + recentUnpinnedChats.length && (
-              <SidebarMenuSubItem>
-                <SidebarMenuSubButton
-                  className="cursor-pointer text-sidebar-foreground/70"
-                  onClick={openConversationSearch}
-                >
-                  <MoreHorizontal />
-                  <span>More</span>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            )}
-          </>
-        )}
-      </SidebarMenuSub>
+      {isLoading ? (
+        <ChatListSkeleton subClass={subClass} />
+      ) : (
+        <div className="animate-in fade-in-0 duration-300">
+          {pinnedChats.length > 0 && (
+            <SidebarGroup className="pt-0">
+              <SidebarGroupLabel>Pinned</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuSub className={subClass}>
+                      {pinnedChats.map((conv) => renderConversationItem(conv))}
+                    </SidebarMenuSub>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+
+          {recentUnpinnedChats.length > 0 && (
+            <SidebarGroup className="pt-0">
+              <SidebarGroupLabel>Recents</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuSub className={subClass}>
+                      {recentUnpinnedChats
+                        .slice(0, slots)
+                        .map((conv) => renderConversationItem(conv))}
+                      {showMore && (
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
+                            className="cursor-pointer text-sidebar-foreground/70"
+                            onClick={openConversationSearch}
+                          >
+                            <MoreHorizontal />
+                            <span>More</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )}
+                    </SidebarMenuSub>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+        </div>
+      )}
 
       <DeleteConfirmDialog
         open={deleteConfirmId !== null}
