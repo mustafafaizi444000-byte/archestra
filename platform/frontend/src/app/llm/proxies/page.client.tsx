@@ -67,8 +67,8 @@ function SortIcon({
   isSorted,
 }: {
   isSorted:
-    | NonNullable<archestraApiTypes.GetAgentsData["query"]>["sortDirection"]
-    | false;
+  | NonNullable<archestraApiTypes.GetAgentsData["query"]>["sortDirection"]
+  | false;
 }) {
   const upArrow = <ChevronUp className="h-3 w-3" />;
   const downArrow = <ChevronDown className="h-3 w-3" />;
@@ -148,8 +148,8 @@ function LlmProxies({ initialData }: { initialData?: LlmProxiesInitialData }) {
       : undefined,
     excludeOtherPersonalAgents:
       scopeFromUrl !== "personal" &&
-      !authorIdsFromUrl &&
-      !excludeAuthorIdsFromUrl
+        !authorIdsFromUrl &&
+        !excludeAuthorIdsFromUrl
         ? true
         : undefined,
     labels: labelsFromUrl || undefined,
@@ -292,22 +292,61 @@ function LlmProxies({ initialData }: { initialData?: LlmProxiesInitialData }) {
     },
     ...(isAdmin
       ? [
-          {
-            id: "team",
-            header: "Accessible to",
-            enableSorting: false,
-            cell: ({ row }: { row: { original: ProxyData } }) => (
-              <ResourceVisibilityBadge
-                scope={row.original.scope}
-                teams={row.original.teams}
-                authorId={row.original.authorId}
-                authorName={row.original.authorName}
-                currentUserId={currentUserId}
-              />
-            ),
-          } satisfies ColumnDef<ProxyData>,
-        ]
+        {
+          id: "team",
+          header: "Accessible to",
+          enableSorting: false,
+          cell: ({ row }: { row: { original: ProxyData } }) => (
+            <ResourceVisibilityBadge
+              scope={row.original.scope}
+              teams={row.original.teams}
+              authorId={row.original.authorId}
+              authorName={row.original.authorName}
+              currentUserId={currentUserId}
+            />
+          ),
+        } satisfies ColumnDef<ProxyData>,
+      ]
       : []),
+    {
+      id: "usage",
+      header: "Usage",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const agent = row.original;
+        const limits = (agent as any).limits || [];
+
+        if (!limits || limits.length === 0) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+
+        // پیدا کردن محدودیت با کمترین مصرف باقی‌مانده طبق خواسته تیکت
+        const sortedLimits = [...limits].sort((a: any, b: any) => {
+          const remA = (a.limit ?? 0) - (a.used ?? 0);
+          const remB = (b.limit ?? 0) - (b.used ?? 0);
+          return remA - remB;
+        });
+
+        const leastRemaining = sortedLimits[0];
+        const remainingUsage = (leastRemaining.limit ?? 0) - (leastRemaining.used ?? 0);
+
+        return (
+          <div
+            className="text-sm font-medium cursor-pointer"
+            title={`Model: ${leastRemaining.model || "N/A"}\nLimit: ${leastRemaining.limit}\nUsed: ${leastRemaining.used}`}
+          >
+            <span className={remainingUsage <= 0 ? "text-destructive" : ""}>
+              {remainingUsage} left
+            </span>
+            {limits.length > 1 && (
+              <span className="text-xs text-blue-500 block hover:underline">
+                + {limits.length - 1} more limits
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
     {
       id: "actions",
       header: "Actions",
@@ -425,12 +464,12 @@ function LlmProxies({ initialData }: { initialData?: LlmProxiesInitialData }) {
                 onPaginationChange={handlePaginationChange}
                 hasActiveFilters={Boolean(
                   nameFilter ||
-                    scopeFromUrl ||
-                    teamIdsFromUrl ||
-                    authorIdsFromUrl ||
-                    excludeAuthorIdsFromUrl ||
-                    labelsFromUrl ||
-                    isDeletedView,
+                  scopeFromUrl ||
+                  teamIdsFromUrl ||
+                  authorIdsFromUrl ||
+                  excludeAuthorIdsFromUrl ||
+                  labelsFromUrl ||
+                  isDeletedView,
                 )}
                 onClearFilters={() =>
                   updateQueryParams({

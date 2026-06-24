@@ -65,6 +65,7 @@ export default function UsersPageClient() {
   );
 }
 
+//
 function UsersPageContent() {
   const setActionButton = useSetSettingsAction();
   const { data: activeOrg, isPending: isOrgPending } = useActiveOrganization();
@@ -314,6 +315,40 @@ function MembersTab({
       ),
     },
     {
+      id: "usage",
+      header: "Usage",
+      size: 150,
+      cell: ({ row }) => {
+        const member = row.original as any;
+        const usageLimits = member.usageLimits || [];
+
+        if (!usageLimits || usageLimits.length === 0) {
+          return <span className="text-muted-foreground text-xs">Unlimited</span>;
+        }
+
+        const sortedLimits = [...usageLimits].sort((a: any, b: any) => (a.limit - a.used) - (b.limit - b.used));
+        const activeLimit = sortedLimits[0];
+        const remaining = activeLimit.limit - activeLimit.used;
+
+        return (
+          <div className="relative group inline-block text-sm font-medium">
+            <span className="cursor-help border-b border-dotted border-muted-foreground">
+              {remaining.toLocaleString()} left
+            </span>
+            <div className="absolute hidden group-hover:block bg-popover text-popover-foreground border rounded shadow-md p-2 top-full mt-1 left-0 z-50 min-w-[180px] text-xs space-y-1">
+              <div className="font-bold border-b pb-1 mb-1">Limit Breakdown</div>
+              {usageLimits.map((lim: any, idx: number) => (
+                <div key={idx} className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{lim.model || "General"}:</span>
+                  <span>{lim.used}/{lim.limit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       id: "joined",
       header: "Joined",
       cell: ({ row }) =>
@@ -382,15 +417,15 @@ function MembersTab({
               },
               ...(canImpersonateThisUser
                 ? [
-                    {
-                      icon: <Eye className="h-4 w-4" />,
-                      label: "View as user",
-                      permissions: { member: ["update"] },
-                      disabled: isImpersonatingUser,
-                      testId: `${E2eTestId.ImpersonationViewAsButton}-${member.userId}`,
-                      onClick: () => impersonateUser(member.userId),
-                    },
-                  ]
+                  {
+                    icon: <Eye className="h-4 w-4" />,
+                    label: "View as user",
+                    permissions: { member: ["update"] },
+                    disabled: isImpersonatingUser,
+                    testId: `${E2eTestId.ImpersonationViewAsButton}-${member.userId}`,
+                    onClick: () => impersonateUser(member.userId),
+                  },
+                ]
                 : []),
               {
                 icon: <Trash2 className="h-4 w-4" />,
@@ -667,7 +702,7 @@ function InvitationsTab({
             {isExpired
               ? "Expired"
               : row.original.status.charAt(0).toUpperCase() +
-                row.original.status.slice(1).toLowerCase()}
+              row.original.status.slice(1).toLowerCase()}
           </Badge>
         );
       },

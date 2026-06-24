@@ -74,8 +74,8 @@ function SortIcon({
   isSorted,
 }: {
   isSorted:
-    | NonNullable<archestraApiTypes.GetAgentsData["query"]>["sortDirection"]
-    | false;
+  | NonNullable<archestraApiTypes.GetAgentsData["query"]>["sortDirection"]
+  | false;
 }) {
   const upArrow = <ChevronUp className="h-3 w-3" />;
   const downArrow = <ChevronDown className="h-3 w-3" />;
@@ -105,7 +105,6 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
   } = useDataTableQueryParams();
   const router = useRouter();
 
-  // Get pagination/filter params from URL
   const nameFilter = searchParams.get("name") || "";
   const sortByFromUrl = searchParams.get("sortBy") as
     | "name"
@@ -131,7 +130,6 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
     | "deleted"
     | null;
 
-  // Default sorting
   const sortBy = sortByFromUrl || DEFAULT_SORT_BY;
   const sortDirection = sortDirectionFromUrl || DEFAULT_SORT_DIRECTION;
 
@@ -151,8 +149,8 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
       : undefined,
     excludeOtherPersonalAgents:
       scopeFromUrl !== "personal" &&
-      !authorIdsFromUrl &&
-      !excludeAuthorIdsFromUrl
+        !authorIdsFromUrl &&
+        !excludeAuthorIdsFromUrl
         ? true
         : undefined,
     labels: labelsFromUrl || undefined,
@@ -172,13 +170,10 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
   const currentUserId = session?.user?.id;
   const userTeamIdSet = new Set((userTeams ?? []).map((t) => t.id));
 
-  // Users can always create personal agents, no team requirement needed
-
   const [sorting, setSorting] = useState<SortingState>([
     { id: sortBy, desc: sortDirection === "desc" },
   ]);
 
-  // Sync sorting state with URL params
   useEffect(() => {
     setSorting([{ id: sortBy, desc: sortDirection === "desc" }]);
   }, [sortBy, sortDirection]);
@@ -202,10 +197,9 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
       try {
         const cloned = await cloneAgent.mutateAsync(agentId);
         if (cloned) {
-          // Open edit dialog for the cloned agent so user can rename immediately
           setEditingAgent(cloned as AgentData);
         }
-      } catch (_error) {}
+      } catch (_error) { }
     },
     [cloneAgent],
   );
@@ -217,18 +211,15 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
     null,
   );
 
-  // Handle 'create' URL parameter to open the Create Agent dialog
   useEffect(() => {
     if (searchParams.get("create") === "true") {
       setIsCreateDialogOpen(true);
-      // Remove the 'create' parameter from URL after opening the dialog
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("create");
       router.replace(`${pathname}?${newParams.toString()}`);
     }
   }, [searchParams, pathname, router]);
 
-  // Handle 'edit' URL parameter to open the Edit Agent dialog
   const editAgentId = searchParams.get("edit");
   const { data: editAgentData } = useProfile(editAgentId ?? undefined);
   useEffect(() => {
@@ -247,7 +238,6 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
     router,
   ]);
 
-  // Handle 'view' URL parameter to open the View Agent dialog (read-only)
   const viewAgentId = searchParams.get("view");
   const { data: viewAgentData } = useProfile(viewAgentId ?? undefined);
   useEffect(() => {
@@ -266,7 +256,6 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
     router,
   ]);
 
-  // Update URL when sorting changes
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
       const newSorting =
@@ -290,7 +279,6 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
     [sorting, updateQueryParams],
   );
 
-  // Update URL when pagination changes
   const handlePaginationChange = useCallback(
     (newPagination: { pageIndex: number; pageSize: number }) => {
       setPagination(newPagination);
@@ -361,23 +349,57 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
         );
       },
     },
+    {
+      id: "usage",
+      header: "Usage",
+      size: 150,
+      cell: ({ row }) => {
+        const agent = row.original;
+        const usageLimits = (agent as any).usageLimits || [];
+
+        if (!usageLimits || usageLimits.length === 0) {
+          return <span className="text-muted-foreground text-xs">Unlimited</span>;
+        }
+
+        const sortedLimits = [...usageLimits].sort((a: any, b: any) => (a.limit - a.used) - (b.limit - b.used));
+        const activeLimit = sortedLimits[0];
+        const remaining = activeLimit.limit - activeLimit.used;
+
+        return (
+          <div className="relative group inline-block text-sm font-medium">
+            <span className="cursor-help border-b border-dotted border-muted-foreground">
+              {remaining.toLocaleString()} left
+            </span>
+            <div className="absolute hidden group-hover:block bg-popover text-popover-foreground border rounded shadow-md p-2 top-full mt-1 left-0 z-50 min-w-[180px] text-xs space-y-1">
+              <div className="font-bold border-b pb-1 mb-1">Limit Breakdown</div>
+              {usageLimits.map((lim: any, idx: number) => (
+                <div key={idx} className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{lim.model || "General"}:</span>
+                  <span>{lim.used}/{lim.limit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      },
+    },
     ...(isAgentAdmin
       ? [
-          {
-            id: "team",
-            header: "Accessible to",
-            enableSorting: false,
-            cell: ({ row }: { row: { original: AgentData } }) => (
-              <ResourceVisibilityBadge
-                scope={row.original.scope}
-                teams={row.original.teams}
-                authorId={row.original.authorId}
-                authorName={row.original.authorName}
-                currentUserId={currentUserId}
-              />
-            ),
-          } satisfies ColumnDef<AgentData>,
-        ]
+        {
+          id: "team",
+          header: "Accessible to",
+          enableSorting: false,
+          cell: ({ row }: { row: { original: AgentData } }) => (
+            <ResourceVisibilityBadge
+              scope={row.original.scope}
+              teams={row.original.teams}
+              authorId={row.original.authorId}
+              authorName={row.original.authorName}
+              currentUserId={currentUserId}
+            />
+          ),
+        } satisfies ColumnDef<AgentData>,
+      ]
       : []),
     {
       id: "actions",
@@ -568,7 +590,7 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
             <ImportAgentDialog
               open={isImportDialogOpen}
               onOpenChange={setIsImportDialogOpen}
-              onSuccess={() => {}}
+              onSuccess={() => { }}
             />
 
             <ConvertToSkillDialog
@@ -586,7 +608,6 @@ function Agents({ initialData }: { initialData?: AgentsInitialData }) {
 
 function AgentConnectionColumns({ agentId }: { agentId: string }) {
   const appName = useAppName();
-  // Fetch agent data for A2A connection instructions
   const { data: profiles, isPending } = useProfiles();
   const agent = profiles?.find((p) => p.id === agentId);
 
@@ -621,7 +642,7 @@ function ConnectAgentDialog({
     agentType: AgentType;
   };
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean)void;
 }) {
   return (
     <ConnectDialog

@@ -179,6 +179,15 @@ export default function VirtualKeysPage() {
           ),
       },
       {
+        accessorKey: "usage",
+        header: "Usage",
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.usage ?? 0}
+          </span>
+        ),
+      },
+      {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
